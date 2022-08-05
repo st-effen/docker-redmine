@@ -1,0 +1,59 @@
+version: '3' 
+
+services: 
+
+  redmine-app: 
+    image: redmine 
+    container_name: redmine-app 
+    restart: unless-stopped 
+    depends_on: 
+      - redmine-db 
+
+    environment: 
+      - REDMINE_DB_MYSQL=redmine-db 
+      - REDMINE_DB_DATABASE=redmine 
+      - REDMINE_DB_PORT=3306 
+      - REDMINE_DB_PASSWORD=SICHERESPASSWORT1 
+      - REDMINE_DB_USERNAME=redmine 
+
+    volumes: 
+      - ./daten:/usr/src/redmine/files 
+
+    labels: 
+      - "traefik.enable=true" 
+      - "traefik.http.routers.redmine.entrypoints=http" 
+      - "traefik.http.routers.redmine.rule=Host(`redmine.yourdomain.com`)" 
+      - "traefik.http.middlewares.redmine-https-redirect.redirectscheme.scheme=https" 
+      - "traefik.http.routers.redmine.middlewares=redmine-https-redirect" 
+      - "traefik.http.routers.redmine-secure.entrypoints=https" 
+      - "traefik.http.routers.redmine-secure.rule=Host(`redmine.yourdomain.com`)" 
+      - "traefik.http.routers.redmine-secure.tls=true" 
+      - "traefik.http.routers.redmine-secure.tls.certresolver=http" 
+      - "traefik.http.routers.redmine-secure.service=redmine" 
+      - "traefik.http.services.redmine.loadbalancer.server.port=3000" 
+      - "traefik.docker.network=proxy" 
+      - "traefik.http.routers.redmine-secure.middlewares=secHeaders@file" 
+
+    networks: 
+      - proxy 
+      - default 
+
+  redmine-db: 
+    image: mysql:5.7 
+    container_name: redmine-db 
+    restart: unless-stopped 
+    volumes: 
+      - ./database:/var/lib/mysql 
+
+    environment: 
+      - MYSQL_ROOT_PASSWORD=SICHERESPASSWORTROOT 
+      - MYSQL_PASSWORD=SICHERESPASSWORT1 
+      - MYSQL_DATABASE=redmine 
+      - MYSQL_USER=redmine 
+      - MYSQL_INITDB_SKIP_TZINFO=1   
+    networks: 
+      - default
+      
+networks: 
+  proxy: 
+    external: true 
